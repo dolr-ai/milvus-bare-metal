@@ -152,41 +152,41 @@ jobs:
             echo 'Deployment verification completed'
           "
 
-      - name: Check Milvus services and logs
-        run: |
-          ssh root@${{ matrix.server_ip }} "
-            echo '=== Milvus Firewall Setup Logs ==='
-            journalctl -u milvus-firewall-setup.service --no-pager -n 50
-            echo ''
-            echo '=== Milvus SSL Setup Logs ==='
-            journalctl -u milvus-ssl-setup.service --no-pager -n 100
-            echo ''
-            echo '=== Nginx Service Status ==='
-            systemctl status nginx.service --no-pager || true
-            echo ''
-            echo '=== Nginx Logs ==='
-            journalctl -u nginx.service --no-pager -n 30
-            echo ''
-            echo '=== Milvus Container Services Status ==='
-            systemctl status milvus-etcd.service --no-pager || true
-            systemctl status milvus-minio.service --no-pager || true
-            systemctl status milvus-standalone.service --no-pager || true
-            echo ''
-            echo '=== Running Containers ==='
-            podman ps -a
-            echo ''
-            echo '=== Network Ports ==='
-            ss -tlnp | grep -E ':(80|443|19530|9091)' || echo 'No ports listening'
-            echo ''
-            echo '=== Firewall Status ==='
-            firewall-cmd --list-all || echo 'Firewall not active'
-            echo ''
-            echo '=== SSL Certificate Check ==='
-            ls -lah /etc/ssl/milvus/ || echo 'SSL directory not found'
-            echo ''
-            echo '=== Nginx Config Test ==='
-            nginx -t || echo 'Nginx config test failed'
-          "
+      # - name: Check Milvus services and logs
+      #   run: |
+      #     ssh root@${{ matrix.server_ip }} "
+      #       echo '=== Milvus Firewall Setup Logs ==='
+      #       journalctl -u milvus-firewall-setup.service --no-pager -n 50
+      #       echo ''
+      #       echo '=== Milvus SSL Setup Logs ==='
+      #       journalctl -u milvus-ssl-setup.service --no-pager -n 100
+      #       echo ''
+      #       echo '=== Nginx Service Status ==='
+      #       systemctl status nginx.service --no-pager || true
+      #       echo ''
+      #       echo '=== Nginx Logs ==='
+      #       journalctl -u nginx.service --no-pager -n 30
+      #       echo ''
+      #       echo '=== Milvus Container Services Status ==='
+      #       systemctl status milvus-etcd.service --no-pager || true
+      #       systemctl status milvus-minio.service --no-pager || true
+      #       systemctl status milvus-standalone.service --no-pager || true
+      #       echo ''
+      #       echo '=== Running Containers ==='
+      #       podman ps -a
+      #       echo ''
+      #       echo '=== Network Ports ==='
+      #       ss -tlnp | grep -E ':(80|443|19530|9091)' || echo 'No ports listening'
+      #       echo ''
+      #       echo '=== Firewall Status ==='
+      #       firewall-cmd --list-all || echo 'Firewall not active'
+      #       echo ''
+      #       echo '=== SSL Certificate Check ==='
+      #       ls -lah /etc/ssl/milvus/ || echo 'SSL directory not found'
+      #       echo ''
+      #       echo '=== Nginx Config Test ==='
+      #       nginx -t || echo 'Nginx config test failed'
+      #     "
 
       - name: Deployment summary
         run: |
