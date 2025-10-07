@@ -5,6 +5,10 @@ SSL_DIR="/etc/ssl/milvus"
 ACME_HOME="/var/lib/acme.sh"
 NGINX_CONF_DIR="/etc/nginx/conf.d"
 
+# Set acme.sh home directory
+export LE_WORKING_DIR="$ACME_HOME"
+export LE_CONFIG_HOME="$ACME_HOME"
+
 echo "=== Milvus SSL Certificate Setup ==="
 
 # Ensure nginx is running before we start
@@ -33,8 +37,7 @@ if [ ! -f "$ACME_HOME/acme.sh" ]; then
     echo "Installing acme.sh to $ACME_HOME..."
     mkdir -p "$ACME_HOME"
     cd /tmp
-    export LE_WORKING_DIR="$ACME_HOME"
-    curl https://get.acme.sh | sh -s -- --home "$ACME_HOME" email=joel@gobazzinga.io
+    curl https://get.acme.sh | sh -s -- --home "$ACME_HOME" --config-home "$ACME_HOME" email=joel@gobazzinga.io
     cd -
 
     if [ ! -f "$ACME_HOME/acme.sh" ]; then
