@@ -3,7 +3,7 @@ set -e
 
 DOMAIN="vector.yral.com"
 SSL_DIR="/etc/ssl/milvus"
-ACME_HOME="/root/.acme.sh"
+ACME_HOME="/var/lib/acme.sh"
 NGINX_CONF_DIR="/etc/nginx/conf.d"
 
 echo "=== Milvus SSL Certificate Setup ==="

@@ -10,6 +10,7 @@ RUN dnf install -y \
     firewalld \
     curl \
     unzip \
+    cronie \
     && dnf clean all
 
 # Include unit files and containers
