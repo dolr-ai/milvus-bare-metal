@@ -20,7 +20,7 @@ ADD usr /usr
 EXPOSE 80 443
 
 # Create necessary directories
-RUN mkdir -p /etc/ssl/milvus /var/www/html
+RUN mkdir -p /etc/ssl/milvus /var/www/html /var/log/nginx /var/lib/nginx/tmp/client_body /var/lib/nginx/tmp/proxy /var/lib/nginx/tmp/fastcgi /var/lib/nginx/tmp/uwsgi /var/lib/nginx/tmp/scgi
 
 # Enable systemd services
 RUN systemctl enable \

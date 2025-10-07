@@ -91,11 +91,13 @@ jobs:
         run: |
           ssh root@${{ matrix.server_ip }} "
             echo 'Configuring Milvus credentials...'
-            mkdir -p /etc/milvus
-            cat > /etc/milvus/credentials.env << 'EOF'
-          COMMON_SECURITY_DEFAULTROOTPASSWORD=${{ secrets.MILVUS_ROOT_PASSWORD }}
+            mkdir -p /etc/systemd/system/milvus-standalone.service.d
+            cat > /etc/systemd/system/milvus-standalone.service.d/override.conf << 'EOF'
+          [Service]
+          Environment=COMMON_SECURITY_DEFAULTROOTPASSWORD=${{ secrets.MILVUS_ROOT_PASSWORD }}
           EOF
-            chmod 600 /etc/milvus/credentials.env
+            chmod 600 /etc/systemd/system/milvus-standalone.service.d/override.conf
+            systemctl daemon-reload
             echo 'Milvus credentials configured successfully'
           "
 

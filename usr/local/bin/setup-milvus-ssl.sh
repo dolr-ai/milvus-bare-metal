@@ -29,7 +29,10 @@ mkdir -p "$SSL_DIR"
 # Install acme.sh if not present
 if [ ! -f "$ACME_HOME/acme.sh" ]; then
     echo "Installing acme.sh..."
+    # Change to writable directory for bootc immutable OS
+    cd /tmp
     curl https://get.acme.sh | sh -s email=joel@gobazzinga.io
+    cd -
 fi
 
 # Stop nginx temporarily for standalone mode
