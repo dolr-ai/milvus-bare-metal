@@ -6,6 +6,7 @@ Wants=network-online.target
 [Container]
 Image=docker.io/timberio/vector:latest-debian
 ContainerName=vector
+User=0:0
 Volume=/etc/vector:/etc/vector:ro
 Volume=/var/log/journal:/var/log/journal:ro
 Volume=/run/log/journal:/run/log/journal:ro
