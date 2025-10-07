@@ -3,7 +3,6 @@ FROM quay.io/fedora/fedora-bootc:latest
 # Update system
 RUN dnf update -y && dnf clean all
 
-# Install required packages for Milvus
 RUN dnf install -y \
     podman \
     nginx \
