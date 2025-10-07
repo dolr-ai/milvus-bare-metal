@@ -33,7 +33,8 @@ if [ ! -f "$ACME_HOME/acme.sh" ]; then
     echo "Installing acme.sh to $ACME_HOME..."
     mkdir -p "$ACME_HOME"
     cd /tmp
-    curl https://get.acme.sh | sh -s email=joel@gobazzinga.io --home "$ACME_HOME"
+    export LE_WORKING_DIR="$ACME_HOME"
+    curl https://get.acme.sh | sh -s -- --home "$ACME_HOME" email=joel@gobazzinga.io
     cd -
 
     if [ ! -f "$ACME_HOME/acme.sh" ]; then
