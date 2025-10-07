@@ -23,4 +23,13 @@ else
     echo "⚠ firewalld not found, skipping firewall configuration"
 fi
 
+# Configure SELinux for nginx to connect to backend services
+if command -v setsebool &> /dev/null; then
+    echo "Configuring SELinux for nginx..."
+    setsebool -P httpd_can_network_connect on
+    echo "✓ SELinux configured successfully"
+else
+    echo "⚠ SELinux tools not found, skipping SELinux configuration"
+fi
+
 echo "✓ Firewall setup complete"
