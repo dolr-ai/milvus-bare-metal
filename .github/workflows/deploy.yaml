@@ -87,20 +87,6 @@ jobs:
             echo '${{ secrets.GITHUB_TOKEN }}' | podman login ghcr.io -u ${{ github.actor }} --password-stdin
           "
 
-      - name: Configure Milvus credentials
-        run: |
-          ssh root@${{ matrix.server_ip }} "
-            echo 'Configuring Milvus credentials...'
-            mkdir -p /etc/systemd/system/milvus-standalone.service.d
-            cat > /etc/systemd/system/milvus-standalone.service.d/override.conf << 'EOF'
-          [Service]
-          Environment=COMMON_SECURITY_DEFAULTROOTPASSWORD=${{ secrets.MILVUS_ROOT_PASSWORD }}
-          EOF
-            chmod 600 /etc/systemd/system/milvus-standalone.service.d/override.conf
-            systemctl daemon-reload
-            echo 'Milvus credentials configured successfully'
-          "
-
       - name: Update bootc deployment
         run: |
           TARGET_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.workflow_run.head_sha }}"
@@ -140,6 +126,21 @@ jobs:
             echo "Attempt $i: Server not ready yet, waiting 10 seconds..."
             sleep 10
           done
+
+      - name: Configure Milvus credentials
+        run: |
+          ssh root@${{ matrix.server_ip }} "
+            echo 'Configuring Milvus credentials...'
+            mkdir -p /etc/systemd/system/milvus-standalone.service.d
+            cat > /etc/systemd/system/milvus-standalone.service.d/override.conf << 'EOF'
+          [Service]
+          Environment=COMMON_SECURITY_DEFAULTROOTPASSWORD=${{ secrets.MILVUS_ROOT_PASSWORD }}
+          EOF
+            chmod 600 /etc/systemd/system/milvus-standalone.service.d/override.conf
+            systemctl daemon-reload
+            systemctl restart milvus-standalone.service || echo 'Milvus service will start on boot'
+            echo 'Milvus credentials configured successfully'
+          "
 
       - name: Verify deployment after reboot
         run: |

@@ -11,7 +11,6 @@ SecurityLabelDisable=true
 Environment=ETCD_ENDPOINTS=milvus-etcd:2379
 Environment=MINIO_ADDRESS=milvus-minio:9000
 Environment=COMMON_SECURITY_AUTHORIZATIONENABLED=true
-Environment=COMMON_SECURITY_DEFAULTROOTPASSWORD=Milvus
 Volume=milvus-data.volume:/var/lib/milvus
 PublishPort=127.0.0.1:19530:19530
 PublishPort=127.0.0.1:9091:9091
