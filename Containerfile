@@ -24,6 +24,7 @@ RUN mkdir -p /etc/ssl/milvus /var/www/html /var/log/nginx /var/lib/nginx/tmp/cli
 
 # Enable systemd services
 RUN systemctl enable \
+    milvus-prepare-dirs.service \
     nginx.service \
     firewalld.service \
     podman.socket \
