@@ -10,6 +10,7 @@ ExecStart=/usr/bin/mkdir -p /var/log/nginx /var/lib/nginx/tmp/client_body /var/l
 ExecStart=/usr/bin/touch /var/log/nginx/access.log /var/log/nginx/error.log
 ExecStart=/usr/bin/chown -R nginx:nginx /var/log/nginx /var/lib/nginx
 ExecStart=/usr/bin/chmod -R 755 /var/log/nginx /var/lib/nginx
+ExecStart=/usr/sbin/restorecon -R /var/log/nginx /var/lib/nginx
 RemainAfterExit=yes
 
 [Install]
