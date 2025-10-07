@@ -1,0 +1,15 @@
+[Unit]
+Description=Milvus SSL Certificate Setup
+After=network-online.target nginx.service
+Wants=network-online.target
+ConditionPathExists=!/etc/ssl/milvus/fullchain.pem
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/setup-milvus-ssl.sh
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

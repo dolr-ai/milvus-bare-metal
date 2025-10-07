@@ -1,0 +1,43 @@
+# HTTPS configuration with SSL certificates
+# This file will be activated after SSL certificates are obtained
+
+# HTTP redirect to HTTPS
+server {
+    listen 80;
+    server_name vector.yral.com;
+
+    # Allow ACME challenge for certificate renewal
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    # Redirect all other traffic to HTTPS
+    location / {
+        return 301 https://$server_name$request_uri;
+    }
+}
+
+# HTTPS server with gRPC API
+server {
+    listen 443 ssl http2;
+    server_name vector.yral.com;
+
+    # ZeroSSL certificates (trusted by all clients)
+    ssl_certificate /etc/ssl/milvus/fullchain.pem;
+    ssl_certificate_key /etc/ssl/milvus/privkey.pem;
+
+    # SSL configuration
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    # gRPC API (main endpoint)
+    location / {
+        grpc_pass grpc://127.0.0.1:19530;
+        grpc_set_header X-Real-IP $remote_addr;
+        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        grpc_connect_timeout 60s;
+        grpc_read_timeout 600s;
+        grpc_send_timeout 600s;
+    }
+}

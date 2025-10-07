@@ -1,0 +1,25 @@
+[Unit]
+Description=Milvus MinIO service
+After=network-online.target milvus.network.service
+
+[Container]
+Image=docker.io/minio/minio:RELEASE.2023-03-20T20-16-18Z
+ContainerName=milvus-minio
+Environment=MINIO_ROOT_USER=minioadmin
+Environment=MINIO_ROOT_PASSWORD=minioadmin
+PublishPort=127.0.0.1:9001:9001
+PublishPort=127.0.0.1:9000:9000
+Volume=milvus-minio.volume:/minio_data
+Exec=minio server /minio_data --console-address ":9001"
+HealthCmd=curl -f http://localhost:9000/minio/health/live
+HealthInterval=30s
+HealthTimeout=20s
+HealthRetries=3
+AutoUpdate=registry
+Network=milvus.network
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=multi-user.target default.target

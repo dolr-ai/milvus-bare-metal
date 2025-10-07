@@ -1,0 +1,30 @@
+[Unit]
+Description=Milvus standalone service
+After=network-online.target milvus-etcd.service milvus-minio.service
+Requires=milvus-etcd.service milvus-minio.service
+
+[Container]
+Image=docker.io/milvusdb/milvus:v2.3.3
+ContainerName=milvus-standalone
+Exec=milvus run standalone
+SecurityLabelDisable=true
+Environment=ETCD_ENDPOINTS=milvus-etcd:2379
+Environment=MINIO_ADDRESS=milvus-minio:9000
+Environment=COMMON_SECURITY_AUTHORIZATIONENABLED=true
+EnvironmentFile=-/etc/milvus/credentials.env
+Volume=milvus-data.volume:/var/lib/milvus
+PublishPort=127.0.0.1:19530:19530
+PublishPort=127.0.0.1:9091:9091
+HealthCmd=curl -f http://localhost:9091/healthz
+HealthInterval=30s
+HealthStartPeriod=90s
+HealthTimeout=20s
+HealthRetries=3
+AutoUpdate=registry
+Network=milvus.network
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=multi-user.target default.target

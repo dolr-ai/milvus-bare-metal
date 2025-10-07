@@ -1,0 +1,15 @@
+[Unit]
+Description=Milvus Firewall Configuration
+After=network-online.target
+Before=nginx.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/setup-milvus-firewall.sh
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
