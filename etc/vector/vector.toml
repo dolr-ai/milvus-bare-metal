@@ -6,9 +6,11 @@ current_boot_only = false
 type = "filter"
 inputs = ["journald"]
 condition = '''
-starts_with(string!(.SYSTEMD_UNIT), "milvus-") ||
-starts_with(string!(.SYSTEMD_UNIT), "nginx") ||
-starts_with(string!(.SYSTEMD_UNIT), "podman")
+exists(.SYSTEMD_UNIT) && (
+  starts_with(string!(.SYSTEMD_UNIT), "milvus-") ||
+  starts_with(string!(.SYSTEMD_UNIT), "nginx") ||
+  starts_with(string!(.SYSTEMD_UNIT), "podman")
+)
 '''
 
 [transforms.format_for_analytics]
