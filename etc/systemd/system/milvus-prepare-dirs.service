@@ -1,7 +1,8 @@
 [Unit]
 Description=Create Milvus required directories
 Before=nginx.service
-DefaultDependencies=no
+After=local-fs.target
+RequiresMountsFor=/var
 
 [Service]
 Type=oneshot
