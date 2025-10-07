@@ -1,4 +1,2 @@
 [Network]
 NetworkName=milvus
-Driver=bridge
-DNSEnabled=true
