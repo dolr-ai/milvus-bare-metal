@@ -1,10 +1,11 @@
-name: Deploy bootc image to Hetzner bare metal server
+name: Deploy Milvus to Hetzner bare metal server
 
 on:
   workflow_run:
-    workflows: ["Build bootc image with GHA"]
+    workflows: ["Validate Milvus Configuration"]
     types:
       - completed
+  workflow_dispatch:
 
 concurrency:
   group: deploy-hetzner-${{ github.ref }}
@@ -53,10 +54,6 @@ jobs:
 
     needs: prepare
 
-    env:
-      IMAGE_NAME: ${{ github.event.repository.name }}
-      REGISTRY: ghcr.io/${{ github.repository_owner }}
-
     steps:
       - name: Clone the repository
         uses: actions/checkout@v4
@@ -74,81 +71,53 @@ jobs:
         run: |
           ssh -o ConnectTimeout=10 root@${{ matrix.server_ip }} "echo 'Server connection successful'"
 
-      - name: Check current bootc status and determine deployment type
+      - name: Sync deployment files to server
         run: |
-          ssh root@${{ matrix.server_ip }} "
-            echo 'Current bootc status:'
-            bootc status
-          "
-
-      - name: Login to container registry on target server
-        run: |
-          ssh root@${{ matrix.server_ip }} "
-            echo '${{ secrets.GITHUB_TOKEN }}' | podman login ghcr.io -u ${{ github.actor }} --password-stdin
-          "
-
-      - name: Update bootc deployment
-        run: |
-          TARGET_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.workflow_run.head_sha }}"
-          ssh root@${{ matrix.server_ip }} "
-            echo 'Updating bootc deployment'
-            echo 'Switching to image: $TARGET_IMAGE'
-            bootc switch $TARGET_IMAGE
-            echo 'Bootc switch completed successfully'
-          "
-
-      - name: Check deployment status
-        run: |
-          ssh root@${{ matrix.server_ip }} "
-            echo 'Post-deployment bootc status:'
-            bootc status || echo 'Bootc status not available yet'
-            if bootc status --json &>/dev/null; then
-              echo 'Staged image:'
-              bootc status --json | jq -r '.status.staged.image.image.image' 2>/dev/null || echo 'None'
-            fi
-          "
-
-      - name: Reboot server to activate new image
-        run: |
-          echo "Rebooting server to activate new image..."
-          ssh root@${{ matrix.server_ip }} "
-            echo 'Rebooting server to activate new image...'
-            nohup reboot &
-          " || echo "Reboot command sent"
-      - name: Wait for server to come back online
-        run: |
-          echo "Waiting for server to come back online..."
-          for i in {1..60}; do
-            if ssh -o ConnectTimeout=5 root@${{ matrix.server_ip }} "echo 'Server is back online'"; then
-              echo "Server is back online after $((i*10)) seconds"
-              break
-            fi
-            echo "Attempt $i: Server not ready yet, waiting 10 seconds..."
-            sleep 10
-          done
+          rsync -avz --delete \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude 'README.md' \
+            ./ \
+            root@${{ matrix.server_ip }}:/opt/milvus/
 
       - name: Configure Milvus credentials
         run: |
           ssh root@${{ matrix.server_ip }} "
+            cd /opt/milvus
             echo 'Configuring Milvus credentials...'
-            mkdir -p /etc/systemd/system/milvus-standalone.service.d
-            cat > /etc/systemd/system/milvus-standalone.service.d/override.conf << 'EOF'
-          [Service]
-          Environment=COMMON_SECURITY_DEFAULTROOTPASSWORD=${{ secrets.MILVUS_ROOT_PASSWORD }}
+            cat > .env << 'EOF'
+          MILVUS_ROOT_PASSWORD=${{ secrets.MILVUS_ROOT_PASSWORD }}
           EOF
-            chmod 600 /etc/systemd/system/milvus-standalone.service.d/override.conf
-            systemctl daemon-reload
-            systemctl restart milvus-standalone.service || echo 'Milvus service will start on boot'
+            chmod 600 .env
             echo 'Milvus credentials configured successfully'
           "
 
-      - name: Verify deployment after reboot
+      - name: Deploy Milvus with Docker Compose
         run: |
           ssh root@${{ matrix.server_ip }} "
-            echo 'Post-reboot bootc status:'
-            bootc status
-            echo 'Active image:'
-            bootc status --json | jq -r '.status.booted.image.image.image'
+            cd /opt/milvus
+            echo 'Pulling latest images...'
+            docker compose pull
+            echo 'Starting Milvus services...'
+            docker compose up -d
+            echo 'Waiting for services to be healthy...'
+            sleep 15
+            docker compose ps
+          "
+
+      - name: Verify deployment
+        run: |
+          ssh root@${{ matrix.server_ip }} "
+            cd /opt/milvus
+            echo '=== Docker Containers Status ==='
+            docker compose ps
+            echo ''
+            echo '=== Checking Service Health ==='
+            docker compose exec -T standalone curl -f http://localhost:9091/healthz || echo 'Milvus not yet healthy'
+            echo ''
+            echo '=== Container Logs (last 10 lines) ==='
+            docker compose logs --tail=10
+            echo ''
             echo 'Deployment verification completed'
           "
 
@@ -192,6 +161,7 @@ jobs:
         run: |
           echo "## Deployment Summary for ${{ matrix.server_ip }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Target Server**: ${{ matrix.server_ip }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Image**: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.workflow_run.head_sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Status**: Deployed and activated (server rebooted)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Verification**: New image is now active" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployment Method**: Docker Compose (rsync)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: Deployed successfully" >> $GITHUB_STEP_SUMMARY
+          echo "- **Services**: Milvus, etcd, MinIO, nginx (all containerized)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployment Path**: /opt/milvus" >> $GITHUB_STEP_SUMMARY
