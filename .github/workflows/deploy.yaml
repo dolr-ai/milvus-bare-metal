@@ -163,5 +163,5 @@ jobs:
           echo "- **Target Server**: ${{ matrix.server_ip }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Deployment Method**: Docker Compose (rsync)" >> $GITHUB_STEP_SUMMARY
           echo "- **Status**: Deployed successfully" >> $GITHUB_STEP_SUMMARY
-          echo "- **Services**: Milvus, etcd, MinIO, nginx (all containerized)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Services**: Milvus, etcd, MinIO, Caddy (all containerized)" >> $GITHUB_STEP_SUMMARY
           echo "- **Deployment Path**: /opt/milvus" >> $GITHUB_STEP_SUMMARY

@@ -71,23 +71,24 @@ services:
       - milvus
     restart: always
 
-  nginx:
-    image: nginx:alpine
-    container_name: milvus-nginx
+  caddy:
+    image: caddy:alpine
+    container_name: milvus-caddy
+    command: caddy reverse-proxy --from vector.yral.com --to h2c://milvus-standalone:19530
     ports:
       - "80:80"
       - "443:443"
+      - "443:443/udp"  # HTTP/3
     volumes:
-      - ./etc/nginx/conf.d:/etc/nginx/conf.d:ro
-      - ssl-certs:/etc/ssl/milvus
-      - acme-challenge:/var/www/html/.well-known/acme-challenge
+      - caddy-data:/data
+      - caddy-config:/config
     depends_on:
       - standalone
     networks:
       - milvus
     restart: always
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:2019/"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -100,5 +101,5 @@ volumes:
   etcd-data:
   minio-data:
   milvus-data:
-  ssl-certs:
-  acme-challenge:
+  caddy-data:
+  caddy-config:
