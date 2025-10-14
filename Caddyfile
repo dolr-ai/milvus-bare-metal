@@ -6,7 +6,7 @@ vector.yral.com {
 			versions h2c 2
 		}
 
-		# Pass through gRPC headers
-		header_up Host {http.reverse_proxy.upstream.hostport}
+		# Pass through ALL headers (important for gRPC metadata/auth)
+		header_up * *
 	}
 }
