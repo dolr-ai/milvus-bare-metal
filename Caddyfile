@@ -1,0 +1,12 @@
+vector.yral.com {
+	# gRPC reverse proxy to Milvus
+	reverse_proxy h2c://milvus-standalone:19530 {
+		# Required for gRPC
+		transport http {
+			versions h2c 2
+		}
+
+		# Pass through gRPC headers
+		header_up Host {http.reverse_proxy.upstream.hostport}
+	}
+}

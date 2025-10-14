@@ -74,12 +74,12 @@ services:
   caddy:
     image: caddy:alpine
     container_name: milvus-caddy
-    command: caddy reverse-proxy --from vector.yral.com --to h2c://milvus-standalone:19530
     ports:
       - "80:80"
       - "443:443"
       - "443:443/udp"  # HTTP/3
     volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on:
@@ -87,11 +87,6 @@ services:
     networks:
       - milvus
     restart: always
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "--header=Host:vector.yral.com", "http://localhost/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
 networks:
   milvus:
