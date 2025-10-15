@@ -97,6 +97,27 @@ services:
     restart: always
     logging: *default-logging
 
+  backup:
+    image: mazzolino/restic
+    container_name: milvus-backup
+    hostname: milvus-backup
+    environment:
+      - RESTIC_REPOSITORY=s3:https://hel1.your-objectstorage.com/yral-milvus-backup
+      - RESTIC_PASSWORD=${RESTIC_PASSWORD}
+      - AWS_ACCESS_KEY_ID=${HETZNER_S3_ACCESS_KEY}
+      - AWS_SECRET_ACCESS_KEY=${HETZNER_S3_SECRET_KEY}
+      - BACKUP_CRON=0 2 * * *  # Daily at 2 AM
+      - RESTIC_BACKUP_SOURCES=/data
+      - RESTIC_BACKUP_ARGS=--tag milvus --tag automated
+      - RESTIC_FORGET_ARGS=--keep-daily 7 --keep-weekly 4 --keep-monthly 6
+      - TZ=UTC
+    volumes:
+      - milvus-data:/data/milvus:ro
+      - etcd-data:/data/etcd:ro
+      - minio-data:/data/minio:ro
+    restart: always
+    logging: *default-logging
+
 networks:
   milvus:
     driver: bridge

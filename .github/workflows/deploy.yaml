@@ -80,16 +80,19 @@ jobs:
             ./ \
             root@${{ matrix.server_ip }}:/opt/milvus/
 
-      - name: Configure Milvus credentials
+      - name: Configure credentials
         run: |
           ssh root@${{ matrix.server_ip }} "
             cd /opt/milvus
-            echo 'Configuring Milvus credentials...'
+            echo 'Configuring credentials...'
             cat > .env << 'EOF'
           MILVUS_ROOT_PASSWORD=${{ secrets.MILVUS_ROOT_PASSWORD }}
+          RESTIC_PASSWORD=${{ secrets.RESTIC_PASSWORD }}
+          HETZNER_S3_ACCESS_KEY=${{ secrets.HETZNER_S3_ACCESS_KEY }}
+          HETZNER_S3_SECRET_KEY=${{ secrets.HETZNER_S3_SECRET_KEY }}
           EOF
             chmod 600 .env
-            echo 'Milvus credentials configured successfully'
+            echo 'Credentials configured successfully'
           "
 
       - name: Deploy Milvus with Docker Compose

@@ -1,0 +1,201 @@
+name: Restore Milvus from Backup
+
+on:
+  workflow_dispatch:
+    inputs:
+      snapshot_id:
+        description: 'Snapshot ID to restore (e.g., "latest" or specific snapshot ID like "a1b2c3d4")'
+        required: true
+        default: 'latest'
+
+jobs:
+  prepare:
+    name: Prepare server matrix
+    runs-on: ubuntu-latest
+    outputs:
+      server_matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Set server matrix
+        id: set-matrix
+        run: |
+          SERVER_IPS="${{ vars.HETZNER_BARE_METAL_DEPLOY_TARGET_SERVER_IPS }}"
+          if [[ -z "$SERVER_IPS" ]]; then
+            echo "Error: No server IPs provided. Set HETZNER_BARE_METAL_DEPLOY_TARGET_SERVER_IPS variable."
+            exit 1
+          fi
+          IFS=',' read -ra ADDR <<< "$SERVER_IPS"
+          MATRIX="["
+          for i in "${ADDR[@]}"; do
+            IP=$(echo "$i" | xargs)
+            if [[ -n "$IP" ]]; then
+              MATRIX="$MATRIX\"$IP\","
+            fi
+          done
+          MATRIX="${MATRIX%,}]"
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+
+  restore:
+    name: Restore Milvus Database
+    runs-on: ubuntu-latest
+    needs: prepare
+    strategy:
+      matrix:
+        server_ip: ${{ fromJson(needs.prepare.outputs.server_matrix) }}
+      fail-fast: false
+
+    steps:
+      - name: Validate inputs
+        run: |
+          echo "Snapshot ID: ${{ github.event.inputs.snapshot_id }}"
+          echo "Server IP: ${{ matrix.server_ip }}"
+
+          if [[ -z "${{ github.event.inputs.snapshot_id }}" ]]; then
+            echo "Error: Snapshot ID is required"
+            exit 1
+          fi
+
+      - name: Setup SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.HETZNER_BARE_METAL_GITHUB_ACTIONS_SSH_PRIVATE_KEY }}
+
+      - name: Add server to known hosts
+        run: |
+          ssh-keyscan -H ${{ matrix.server_ip }} >> ~/.ssh/known_hosts
+
+      - name: Check server connectivity
+        run: |
+          ssh -o ConnectTimeout=10 root@${{ matrix.server_ip }} "echo 'Server connection successful'"
+
+      - name: List available snapshots
+        run: |
+          ssh root@${{ matrix.server_ip }} "
+            cd /opt/milvus
+            echo '========================================='
+            echo 'Available Restic Snapshots:'
+            echo '========================================='
+            docker compose run --rm backup restic snapshots --compact
+            echo ''
+            echo 'Restoring snapshot: ${{ github.event.inputs.snapshot_id }}'
+            echo '========================================='
+          "
+
+      - name: Confirm restore operation
+        run: |
+          echo "⚠️  WARNING: This will stop all Milvus services and restore from backup!"
+          echo "Snapshot: ${{ github.event.inputs.snapshot_id }}"
+          echo "Server: ${{ matrix.server_ip }}"
+          echo ""
+          echo "Proceeding with restore..."
+
+      - name: Stop Milvus services
+        run: |
+          ssh root@${{ matrix.server_ip }} "
+            cd /opt/milvus
+            echo 'Stopping Milvus services...'
+            docker compose stop standalone etcd minio
+            echo 'Services stopped'
+          "
+
+      - name: Restore data from backup
+        run: |
+          ssh root@${{ matrix.server_ip }} "
+            cd /opt/milvus
+            echo 'Starting restore process...'
+
+            # Create temporary restore directory
+            RESTORE_DIR='/tmp/restic-restore'
+            rm -rf \${RESTORE_DIR}
+            mkdir -p \${RESTORE_DIR}
+
+            # Restore snapshot to temporary directory
+            echo 'Restoring snapshot ${{ github.event.inputs.snapshot_id }}...'
+            docker compose run --rm \
+              -v \${RESTORE_DIR}:/restore \
+              backup \
+              restic restore ${{ github.event.inputs.snapshot_id }} --target /restore
+
+            # Clear existing volume data
+            echo 'Clearing existing volume data...'
+            docker volume rm milvus-data milvus-etcd-data milvus-minio-data || true
+            docker volume create milvus-data
+            docker volume create etcd-data
+            docker volume create minio-data
+
+            # Restore data to volumes
+            echo 'Restoring data to Docker volumes...'
+
+            # Restore milvus data
+            docker run --rm \
+              -v milvus-data:/target \
+              -v \${RESTORE_DIR}/data/milvus:/source:ro \
+              ubuntu:22.04 \
+              bash -c 'cp -a /source/* /target/'
+
+            # Restore etcd data
+            docker run --rm \
+              -v etcd-data:/target \
+              -v \${RESTORE_DIR}/data/etcd:/source:ro \
+              ubuntu:22.04 \
+              bash -c 'cp -a /source/* /target/'
+
+            # Restore minio data
+            docker run --rm \
+              -v minio-data:/target \
+              -v \${RESTORE_DIR}/data/minio:/source:ro \
+              ubuntu:22.04 \
+              bash -c 'cp -a /source/* /target/'
+
+            # Cleanup
+            echo 'Cleaning up temporary files...'
+            rm -rf \${RESTORE_DIR}
+
+            echo 'Restore completed successfully!'
+          "
+
+      - name: Start Milvus services
+        run: |
+          ssh root@${{ matrix.server_ip }} "
+            cd /opt/milvus
+            echo 'Starting Milvus services...'
+            docker compose up -d
+            echo 'Waiting for services to be healthy...'
+            sleep 30
+            docker compose ps
+          "
+
+      - name: Verify restoration
+        run: |
+          ssh root@${{ matrix.server_ip }} "
+            cd /opt/milvus
+            echo ''
+            echo '========================================='
+            echo 'Restoration Verification'
+            echo '========================================='
+            echo ''
+            echo '=== Docker Containers Status ==='
+            docker compose ps
+            echo ''
+            echo '=== Checking Milvus Health ==='
+            docker compose exec -T standalone curl -f http://localhost:9091/healthz || echo 'Milvus not yet healthy (may need more time)'
+            echo ''
+            echo '=== Recent Container Logs ==='
+            docker compose logs --tail=20 standalone
+            echo ''
+            echo '========================================='
+            echo 'Restore verification completed'
+            echo '========================================='
+          "
+
+      - name: Restore summary
+        run: |
+          echo "## Restore Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Server**: ${{ matrix.server_ip }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Snapshot**: ${{ github.event.inputs.snapshot_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: Completed" >> $GITHUB_STEP_SUMMARY
+          echo "- **Action**: All services restarted with restored data" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Verify data integrity in Milvus" >> $GITHUB_STEP_SUMMARY
+          echo "2. Check application connectivity" >> $GITHUB_STEP_SUMMARY
+          echo "3. Monitor logs for any issues" >> $GITHUB_STEP_SUMMARY

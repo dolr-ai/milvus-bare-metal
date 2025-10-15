@@ -1,0 +1,76 @@
+name: List Available Backups
+
+on:
+  workflow_dispatch:
+
+jobs:
+  prepare:
+    name: Prepare server matrix
+    runs-on: ubuntu-latest
+    outputs:
+      server_matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Set server matrix
+        id: set-matrix
+        run: |
+          SERVER_IPS="${{ vars.HETZNER_BARE_METAL_DEPLOY_TARGET_SERVER_IPS }}"
+          if [[ -z "$SERVER_IPS" ]]; then
+            echo "Error: No server IPs provided. Set HETZNER_BARE_METAL_DEPLOY_TARGET_SERVER_IPS variable."
+            exit 1
+          fi
+          IFS=',' read -ra ADDR <<< "$SERVER_IPS"
+          MATRIX="["
+          for i in "${ADDR[@]}"; do
+            IP=$(echo "$i" | xargs)
+            if [[ -n "$IP" ]]; then
+              MATRIX="$MATRIX\"$IP\","
+            fi
+          done
+          MATRIX="${MATRIX%,}]"
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+
+  list:
+    name: List Restic Snapshots
+    runs-on: ubuntu-latest
+    needs: prepare
+    strategy:
+      matrix:
+        server_ip: ${{ fromJson(needs.prepare.outputs.server_matrix) }}
+      fail-fast: false
+
+    steps:
+      - name: Setup SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.HETZNER_BARE_METAL_GITHUB_ACTIONS_SSH_PRIVATE_KEY }}
+
+      - name: Add server to known hosts
+        run: |
+          ssh-keyscan -H ${{ matrix.server_ip }} >> ~/.ssh/known_hosts
+
+      - name: List snapshots
+        run: |
+          ssh root@${{ matrix.server_ip }} "
+            cd /opt/milvus
+            echo '========================================='
+            echo 'Available Restic Snapshots'
+            echo '========================================='
+            echo ''
+            docker compose run --rm backup restic snapshots
+            echo ''
+            echo '========================================='
+            echo 'Repository Statistics'
+            echo '========================================='
+            echo ''
+            docker compose run --rm backup restic stats --mode raw-data
+          "
+
+      - name: Create summary
+        run: |
+          echo "## Available Backups" >> $GITHUB_STEP_SUMMARY
+          echo "Server: **${{ matrix.server_ip }}**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To restore a backup:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Go to Actions → Restore Milvus from Backup" >> $GITHUB_STEP_SUMMARY
+          echo "2. Click 'Run workflow'" >> $GITHUB_STEP_SUMMARY
+          echo "3. Enter the snapshot ID (or use 'latest')" >> $GITHUB_STEP_SUMMARY
