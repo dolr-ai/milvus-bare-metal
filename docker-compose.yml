@@ -113,10 +113,11 @@ services:
       - TZ=UTC
     volumes:
       - milvus-data:/data/milvus:ro
-      - etcd-data:/data/etcd:ro
       - minio-data:/data/minio:ro
     restart: always
     logging: *default-logging
+    networks:
+      - milvus
 
 networks:
   milvus:

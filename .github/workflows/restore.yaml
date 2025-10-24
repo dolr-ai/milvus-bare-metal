@@ -117,10 +117,14 @@ jobs:
 
             # Clear existing volume data
             echo 'Clearing existing volume data...'
-            docker volume rm milvus-data milvus-etcd-data milvus-minio-data || true
+            docker volume rm milvus-data minio-data || true
             docker volume create milvus-data
-            docker volume create etcd-data
             docker volume create minio-data
+
+            # Note: etcd-data is NOT restored - it will be recreated fresh to avoid node ID conflicts
+            echo 'Recreating etcd volume (fresh start to avoid node ID conflicts)...'
+            docker volume rm etcd-data || true
+            docker volume create etcd-data
 
             # Restore data to volumes
             echo 'Restoring data to Docker volumes...'
@@ -129,13 +133,6 @@ jobs:
             docker run --rm \
               -v milvus-data:/target \
               -v \${RESTORE_DIR}/data/milvus:/source:ro \
-              ubuntu:22.04 \
-              bash -c 'cp -a /source/* /target/'
-
-            # Restore etcd data
-            docker run --rm \
-              -v etcd-data:/target \
-              -v \${RESTORE_DIR}/data/etcd:/source:ro \
               ubuntu:22.04 \
               bash -c 'cp -a /source/* /target/'
 
