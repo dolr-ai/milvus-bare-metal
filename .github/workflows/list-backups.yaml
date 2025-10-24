@@ -56,13 +56,13 @@ jobs:
             echo 'Available Restic Snapshots'
             echo '========================================='
             echo ''
-            docker compose run --rm backup restic snapshots
+            docker compose run --rm backup snapshots
             echo ''
             echo '========================================='
             echo 'Repository Statistics'
             echo '========================================='
             echo ''
-            docker compose run --rm backup restic stats --mode raw-data
+            docker compose run --rm backup stats --mode raw-data
           "
 
       - name: Create summary
