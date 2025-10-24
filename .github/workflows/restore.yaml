@@ -74,7 +74,7 @@ jobs:
             echo '========================================='
             echo 'Available Restic Snapshots:'
             echo '========================================='
-            docker compose run --rm backup restic snapshots --compact
+            docker compose run --rm backup snapshots --compact
             echo ''
             echo 'Restoring snapshot: ${{ github.event.inputs.snapshot_id }}'
             echo '========================================='
@@ -113,7 +113,7 @@ jobs:
             docker compose run --rm \
               -v \${RESTORE_DIR}:/restore \
               backup \
-              restic restore ${{ github.event.inputs.snapshot_id }} --target /restore
+              restore ${{ github.event.inputs.snapshot_id }} --target /restore
 
             # Clear existing volume data
             echo 'Clearing existing volume data...'
